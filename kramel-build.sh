@@ -22,15 +22,18 @@ tg() {
 }
 
 tgs() {
-    SHA1=$(sha1sum "$1" | cut -d' ' -f1)
     curl -fsSL -X POST -F document=@"$1" https://api.telegram.org/bot"${TG_TOKEN}"/sendDocument \
         -F "chat_id=-1001754559150" \
         -F "parse_mode=Markdown" \
-        -F "caption=$2 | *SHA1*: \`$SHA1\`"
+        -F "caption=$2"
 }
 
 # Default defconfig to use for builds.
 CONFIG="merlin_defconfig"
+
+# Device and Codename
+CODENAME=merlin
+DEVICE=Redmi Note 9
 
 # Default directory where kernel is located in.
 KDIR=$(pwd)
@@ -43,10 +46,10 @@ export KBUILD_BUILD_HOST=github.com
 PROCS=$(nproc --all)
 
 Ai1() {
-    
+
     echo -e "\n\e[1;93m[*] Cloning Toolchain! \e[0m"
-    git clone https://github.com/kenhv/gcc-arm64 --depth=1 -b master "${KDIR}"/gcc32
-    git clone https://github.com/kenhv/gcc-arm --depth=1 -b master "${KDIR}"/gcc64
+    git clone https://github.com/kenhv/gcc-arm64 --depth=1 -b master "${KDIR}"/gcc64
+    git clone https://github.com/kenhv/gcc-arm --depth=1 -b master "${KDIR}"/gcc32
     git clone https://github.com/ImLonely13/AnyKernel3 -b merlin "${KDIR}"/anykernel3
     echo -e "\n\e[1;32m[✓] Cloning Done! \e[0m"
 
@@ -56,8 +59,6 @@ Ai1() {
     export KBUILD_COMPILER_STRING
     export PATH="${KDIR}"/gcc32/bin:"${KDIR}"/gcc64/bin:/usr/bin/:${PATH}
     MAKE+=(
-        ARCH=arm64
-        O=out
         CC=aarch64-elf-gcc
         LD=aarch64-elf-ld.lld
         CROSS_COMPILE=aarch64-elf-
@@ -80,41 +81,32 @@ Ai1() {
 
 
 tg "
+<b>Date</b>: <code>$(date)</code>
 <b>Device</b>: <code>${DEVICE}</code>
 <b>Kernel Version</b>: <code>$(make kernelversion 2>/dev/null)</code>
-<b>Date</b>: <code>$(date)</code>
 <b>Zip Name</b>: <code>${zipn}</code>
 <b>Compiler</b>: <code>${KBUILD_COMPILER_STRING}</code>
 <b>Linker</b>: <code>${LLD_VER}</code>
 "
 
-
     echo -e "\n\e[1;93m[*] Building Kernel! \e[0m"
     BUILD_START=$(date +"%s")
-    time make -j"$PROCS" "${MAKE[@]}" Image.gz-dtb dtbo.img 2>&1 | tee log.txt
+     make -j$(nproc) O=out ARCH=arm64 ${CONFIG}
+     make -j$(nproc) ARCH=arm64 O=out \
+     "${MAKE[@]}" 2>&1 | tee log.txt
     BUILD_END=$(date +"%s")
     DIFF=$((BUILD_END - BUILD_START))
-    if [ -f "${KDIR}/out/arch/arm64/boot/Image.gz-dtb" ]; then
-            tg "<b>Kernel Built after $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)</b>"
-        echo -e "\n\e[1;32m[✓] Kernel built after $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)! \e[0m"
-    else
-            tgs "log.txt" "*Build failed*"
-        echo -e "\n\e[1;31m[✗] Build Failed! \e[0m"
-        exit 1
+    if ! [ -a "${KDIR}"/out/arch/arm64/boot/Image.gz ]; then
+            tgs "log.txt" "❌*Build failed* after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
+            exit 1
     fi
-
-    echo -e "\n\e[1;93m[*] Building DTBS! \e[0m"
-    time make -j"$PROCS" "${MAKE[@]}" dtbs dtbo.img
-    echo -e "\n\e[1;32m[✓] Built DTBS! \e[0m"
 
         tg "<b>Building zip!</b>"
     echo -e "\n\e[1;93m[*] Building zip! \e[0m"
-    cat "${KDIR}"/out/arch/arm64/boot/dts/mediatek/mt6768.dtb "${KDIR}"/anykernel3/dtb
-    mv "${KDIR}"/out/arch/arm64/boot/dtbo.img "${KDIR}"/anykernel3
-    mv "${KDIR}"/out/arch/arm64/boot/Image.gz-dtb "${KDIR}"/anykernel3
+    mv "${KDIR}"/out/arch/arm64/boot/Image.gz "${KDIR}"/anykernel3
     cd "${KDIR}"/anykernel3 || exit 1
     zip -r9 "$zipn".zip . -x ".git*" -x "README.md" -x "LICENSE" -x "*.zip"
     echo -e "\n\e[1;32m[✓] Built zip! \e[0m"
-        tgs "${zipn}.zip"
+        tgs "${zipn}.zip" "✅*Build success* after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
 }
 Ai1
