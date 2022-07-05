@@ -39,8 +39,8 @@ DEVICE=Redmi Note 9
 KDIR=$(pwd)
 
 # User and Host name
-export KBUILD_BUILD_USER=ItsProf
-export KBUILD_BUILD_HOST=github.com
+export BUILDER=ItsProf
+export HOST=github.com
 
 # Number of jobs to run.
 PROCS=$(nproc --all)
@@ -48,8 +48,8 @@ PROCS=$(nproc --all)
 Ai1() {
 
     echo -e "\n\e[1;93m[*] Cloning Toolchain! \e[0m"
-    git clone https://github.com/kenhv/gcc-arm64 --depth=1 -b master "${KDIR}"/gcc64
-    git clone https://github.com/kenhv/gcc-arm --depth=1 -b master "${KDIR}"/gcc32
+    git clone https://github.com/cyberknight777/gcc-arm64 --depth=1 -b master "${KDIR}"/gcc64
+    git clone https://github.com/cyberknight777/gcc-arm --depth=1 -b master "${KDIR}"/gcc32
     git clone https://github.com/ImLonely13/AnyKernel3 -b merlin "${KDIR}"/anykernel3
     echo -e "\n\e[1;32m[✓] Cloning Done! \e[0m"
 
@@ -72,6 +72,8 @@ Ai1() {
         HOSTAR=llvm-ar
         HOSTCC=gcc
         HOSTCXX=aarch64-elf-g++
+	CONFIG_DEBUG_SECTION_MISMATCH=y
+        CONFIG_SECTION_MISMATCH_WARN_ONLY=y
     )
 
     export KBUILD_BUILD_VERSION=$GITHUB_RUN_NUMBER
@@ -97,7 +99,7 @@ tg "
     BUILD_END=$(date +"%s")
     DIFF=$((BUILD_END - BUILD_START))
     if ! [ -a "${KDIR}"/out/arch/arm64/boot/Image.gz ]; then
-            tgs "log.txt" "❌*Build failed* after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
+            tgs "log.txt" "❌ Build failed after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
             exit 1
     fi
 
@@ -107,6 +109,6 @@ tg "
     cd "${KDIR}"/anykernel3 || exit 1
     zip -r9 "$zipn".zip . -x ".git*" -x "README.md" -x "LICENSE" -x "*.zip"
     echo -e "\n\e[1;32m[✓] Built zip! \e[0m"
-        tgs "${zipn}.zip" "✅*Build success* after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
+        tgs "${zipn}.zip" "✅ Build success after: $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
 }
 Ai1
